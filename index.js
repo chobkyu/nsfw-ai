@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const axios = require('axios');
 const FormData = require('form-data');
+require('dotenv').config();
 
 const app = express();
 const PORT = 3000;
@@ -17,13 +18,12 @@ const upload = multer({ dest: 'uploads/' });
 async function checkNSFW(filePath) {
     const imageBuffer = fs.readFileSync(filePath);
     const base64Image = imageBuffer.toString('base64');
-  
     const res = await axios.post(
       'https://api-inference.huggingface.co/models/Falconsai/nsfw_image_detection',
       { inputs: base64Image },
       {
         headers: {
-            Authorization: `Bearer ${process.env.api-key}`,
+            'Authorization': `Bearer ${process.env['hugging-key']}`,
             'Content-Type': 'application/json',
         },
       }
@@ -38,7 +38,7 @@ app.post('/upload', upload.single('image'), async (req, res) => {
   if (!req.file) return res.status(400).send('파일이 없습니다.');
 
   const filePath = req.file.path;
-
+  console.log(process.env['hugging-key']);
   try {
     const result = await checkNSFW(filePath);
     res.send(`<pre>${JSON.stringify(result, null, 2)}</pre>`);
