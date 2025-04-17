@@ -32,6 +32,34 @@ async function checkNSFW(filePath) {
     return res.data;
   }
 
+  const models = [
+    "Falconsai/nsfw_image_detection",
+    "Marqo/nsfw-image-detection-384",
+    "LukeJacob2023/nsfw-image-detector",
+    "TostAI/nsfw-image-detection-large"
+  ];
+  
+  async function callNSFWModel(modelName, imagePath) {
+    const form = new FormData();
+    form.append("file", fs.createReadStream(imagePath));
+  
+    try {
+      const res = await axios.post(
+        `https://api-inference.huggingface.co/models/${modelName}`,
+        form,
+        {
+          headers: {
+            ...form.getHeaders(),
+            'Authorization': `Bearer ${process.env['hugging-key']}`,
+          }
+        }
+      );
+      return { model: modelName, result: res.data };
+    } catch (error) {
+      return { model: modelName, error: error.response?.data || error.message };
+    }
+  }
+
 
 // 업로드 및 NSFW 판단
 app.post('/upload', upload.single('image'), async (req, res) => {
@@ -40,7 +68,18 @@ app.post('/upload', upload.single('image'), async (req, res) => {
   const filePath = req.file.path;
   console.log(process.env['hugging-key']);
   try {
-    const result = await checkNSFW(filePath);
+    //const result = await checkNSFW(filePath);
+    const promises = models.map(model => callNSFWModel(model, filePath));
+    const results = await Promise.all(promises);
+  
+    results.forEach(({ model, result, error }) => {
+      console.log(`\n===== [${model}] =====`);
+      if (error) {
+        console.error("❌ Error:", error);
+      } else {
+        console.dir(result, { depth: null });
+      }
+    });
     res.send(`<pre>${JSON.stringify(result, null, 2)}</pre>`);
   } catch (err) {
     console.error('NSFW 판단 오류:', err.message);
