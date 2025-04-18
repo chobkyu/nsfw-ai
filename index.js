@@ -15,6 +15,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 // 정적 파일
 app.use(express.static(join(__dirname, 'public')));
+app.use(express.json()); 
 
 // 파일 업로드 설정
 const upload = multer({ dest: 'uploads/' });
@@ -85,8 +86,9 @@ app.post('/upload', upload.single('image'), async (req, res) => {
   }
 });
 
-app.get('/test',async (req,res) => {
-    const resposne = await getAnswer('안녕 GPT! 오늘 날씨 어때?');
+app.post('/test',async (req,res) => {
+    const {text} = req.body
+    const resposne = await getAnswer(text);
 
     res.send(`<pre>${JSON.stringify(resposne)}</pre>`);
 })
