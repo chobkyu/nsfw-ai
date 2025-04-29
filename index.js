@@ -10,7 +10,7 @@ import { fileURLToPath } from 'url';
 
 dotenv.config();
 const app = express();
-const PORT = 3000;
+const PORT = 3001;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 // 정적 파일
@@ -68,6 +68,53 @@ async function checkNSFW(filePath) {
   }
 
 
+  async function validateToken(token) {
+    try {
+      const response = await axios.get('https://huggingface.co/api/whoami-v2', {
+        headers: {
+          Authorization: `Bearer ${process.env['hugging-key']}`,
+        },
+      });
+      console.log('✅ 유효한 토큰입니다.');
+      console.log('사용자 정보:', response.data);
+    } catch (error) {
+      if (error.response && error.response.status === 401) {
+        console.error('❌ 유효하지 않은 토큰입니다.');
+      } else {
+        console.error('⚠️ 오류 발생:', error.message);
+      }
+    }
+  }
+
+
+  async function callHuggingFaceModel() {
+    try {
+      const response = await axios.post(
+        'https://api-inference.huggingface.co/models/openai-community/gpt2', // 모델 호출
+        { inputs: 'Hello, how are you?' }, // 입력 프롬프트
+        {
+          headers: {
+            Authorization: `Bearer ${process.env['hugging-key']}`,
+          },
+        }
+      );
+  
+      console.log('✅ 호출 성공');
+      console.log('결과:', response.data);
+    } catch (error) {
+      if (error.response) {
+        console.error(`❌ 호출 실패: ${error.response.status} ${error.response.statusText}`);
+        console.error('에러 내용:', error.response.data);
+      } else {
+        console.error('⚠️ 요청 실패:', error.message);
+      }
+    }
+  }
+
+app.get('/token',async(req,res) => {
+  const result = await callHuggingFaceModel();
+  res.send(JSON.stringify(result))
+})
 // 업로드 및 NSFW 판단
 app.post('/upload', upload.single('image'), async (req, res) => {
   if (!req.file) return res.status(400).send('파일이 없습니다.');
@@ -79,6 +126,7 @@ app.post('/upload', upload.single('image'), async (req, res) => {
   
     res.send(`<pre>${JSON.stringify(result, null, 2)}</pre>`);
   } catch (err) {
+    //console.log(err);
     console.error('NSFW 판단 오류:', err.message);
     res.status(500).send('NSFW 판단 실패');
   } finally {

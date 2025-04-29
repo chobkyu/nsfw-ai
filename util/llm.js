@@ -106,4 +106,3 @@ export const getAnswer = async (text) => {
       return res.choices[0].message.content;
 }
 
-
